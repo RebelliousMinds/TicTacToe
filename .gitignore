@@ -1,0 +1,37 @@
+/RUNNING_PID
+/logs/
+/project/*-shim.sbt
+/project/project/
+/project/target/
+/target/
+.idea
+.idea_modules
+.vagrant
+/build/
+.gradle
+build/
+*.iml
+*.ipr
+.DS_Store
+node_modules/
+
+### Vim ###
+# swap
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+# session
+Session.vim
+# temporary
+.netrwhist
+*~
+# auto-generated tag files
+tags
+
+### SBT ###
+target/
+lib_managed/
+src_managed/
+project/boot/
+.history
+.cache
+
