@@ -5,7 +5,7 @@ import scala.io.StdIn.readLine
 
 object Main extends App {
 
-  println("Shall we play a game?")
+  println("\n\nShall we play a game?\n\n")
 
   def togglePlayer(state: GameState): PlayerChoice = {
 
@@ -49,7 +49,7 @@ object Main extends App {
 
   def update(positionSelection: PositionSelection, state: GameState) : Either[UserState, GameState] = {
 
-    println(s"The use chose $positionSelection")
+    println(s"The user chose row ${positionSelection.row}, column ${positionSelection.column} ...")
 
     //find the position on the board
     positionSelection match {
@@ -62,11 +62,7 @@ object Main extends App {
         if(oldTop.left.isEmpty) {
           val newTop = oldTop.copy(left = Some(state.player))
           val newState = replaceTopRow(state, newTop)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -80,11 +76,7 @@ object Main extends App {
         if(oldTop.middle.isEmpty) {
           val newTop = oldTop.copy(middle = Some(state.player))
           val newState = replaceTopRow(state, newTop)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -98,11 +90,7 @@ object Main extends App {
         if(oldTop.right.isEmpty) {
           val newTop = oldTop.copy(right = Some(state.player))
           val newState = replaceTopRow(state, newTop)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -117,11 +105,7 @@ object Main extends App {
         if(oldMiddle.left.isEmpty) {
           val newMiddle = oldMiddle.copy(left = Some(state.player))
           val newState = replaceMiddleRow(state, newMiddle)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -135,11 +119,7 @@ object Main extends App {
         if(oldMiddle.middle.isEmpty) {
           val newMiddle = oldMiddle.copy(middle = Some(state.player))
           val newState = replaceMiddleRow(state, newMiddle)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -153,11 +133,7 @@ object Main extends App {
         if(oldMiddle.right.isEmpty) {
           val newMiddle = oldMiddle.copy(right = Some(state.player))
           val newState = replaceMiddleRow(state, newMiddle)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -172,11 +148,7 @@ object Main extends App {
         if(oldBottom.left.isEmpty) {
           val newBottom = oldBottom.copy(left = Some(state.player))
           val newState = replaceBottomRow(state, newBottom)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -188,13 +160,9 @@ object Main extends App {
         val oldBottom = state.board.matrix.bottom
 
         if(oldBottom.middle.isEmpty) {
-          val newBottom = oldBottom.copy(middle = Some(Xs))
+          val newBottom = oldBottom.copy(middle = Some(state.player))
           val newState = replaceBottomRow(state, newBottom)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
@@ -208,23 +176,25 @@ object Main extends App {
         if(oldBottom.right.isEmpty) {
           val newBottom = oldBottom.copy(right = Some(state.player))
           val newState = replaceBottomRow(state, newBottom)
-          if( weHaveAWinner( newState ) ) {
-            Left(UserWon(state.player))
-          } else {
-            Right(newState)
-          }
+          computeNewState(newState)
         } else {
           Left( InvalidMove )
         }
 
       }
 
-      case PositionSelection(_, _) => {
-        Left(InvalidMove)
-      }
+      case PositionSelection(_, _) => Left(InvalidMove)
 
     }
 
+  }
+
+  def computeNewState(newState: GameState): Either[UserWon, GameState] with Product with Serializable = {
+    if (weHaveAWinner(newState)) {
+      Left(UserWon(newState))
+    } else {
+      Right(newState)
+    }
   }
 
   def replaceBottomRow(state: GameState, newBottom: Row[Option[PlayerChoice]]): GameState = {
@@ -255,14 +225,40 @@ object Main extends App {
     println(err)
   }
 
+  def cellToString(cell: Option[PlayerChoice]) = {
+    cell match {
+      case Some(Xs) => " X "
+      case Some(Os) => " O "
+      case None => "   "
+    }
+  }
+
+  def printRow(row: Row[Option[PlayerChoice]]) = {
+    row match {
+      case Row(l, m, r) => println( s" |${cellToString(l)}|${cellToString(m)}|${cellToString(r)}|" )
+    }
+  }
+
+  def printLine() = {
+    println(" -------------")
+  }
+
   def printBoard(state: GameState): Unit = {
 
-    println( state.board.matrix.top )
-    println( state.board.matrix.middle )
-    println( state.board.matrix.bottom )
+    printLine()
+    printRow( state.board.matrix.top )
+    printLine()
+    printRow( state.board.matrix.middle )
+    printLine()
+    printRow( state.board.matrix.bottom )
+    printLine()
 
-    println( s"It is ${state.player} turn" )
+    println( "\n" )
 
+  }
+
+  def printTurn(state: GameState) = {
+    println( s"It is ${state.player} turn\n" )
   }
 
   @tailrec
@@ -272,23 +268,22 @@ object Main extends App {
 
     update(userInput, state) match {
       case Left(error) => handleUserState(state, error)
-      case Right(state) => printBoard(state); loop(state)
+      case Right(newState) => printBoard(newState); printTurn(newState); loop(newState)
     }
   }
 
-  def printWinner(player: PlayerChoice): Unit = {
-    println(s"Woohoo! Player ${player} has won the game.")
+  def printWinner(state: GameState): Unit = {
+    println(s"\n\nWoohoo! Player ${state.player} has won the game.\n\n")
   }
 
-  def handleUserState(state: GameState, userState: UserState): Unit = {
+  def handleUserState(oldState: GameState, userState: UserState): Unit = {
 
     userState match {
-      case UserWon(player) => printWinner(player)
-      case _ => {
+      case UserWon(newState) => printBoard(newState); printWinner(oldState)
+      case _ =>
         showError(userState)
-        printBoard(state)
-        loop(state)
-      }
+        printBoard(oldState)
+        loop(oldState)
     }
 
   }
