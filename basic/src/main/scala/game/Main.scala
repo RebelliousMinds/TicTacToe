@@ -216,7 +216,7 @@ object Main extends App {
   }
 
   def getInput: PositionSelection = {
-    val input = readLine("Where would you like to place your move? (row, column) ")
+    val input = readLine("Where would you like to place your move? [row,column] ")
     val coordinates = input.split(",")
     PositionSelection(coordinates(0), coordinates(1))
   }
