@@ -81,7 +81,8 @@ object GameState {
       case _ => cell
     })
 
-    GameState(updatedCells, PlayerO, InProcess)
+    val gameStatus = computeGameStatus( gameState )
+    GameState(updatedCells, PlayerO, gameStatus)
 
   }
 
@@ -92,8 +93,8 @@ object GameState {
       case _ => cell
     })
 
-    //TODO compute game status
-    GameState(updatedCells, PlayerX, InProcess)
+    val gameStatus = computeGameStatus( gameState )
+    GameState(updatedCells, PlayerX, gameStatus)
 
   }
 
