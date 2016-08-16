@@ -74,6 +74,10 @@ case class GameState(cells: List[Cell], player: Player, gameStatus: GameStatus) 
 
 object GameState {
 
+  def computeGameStatus(gameState: GameState) : GameStatus = {
+    ???
+  }
+
   def playerXMoves( gameState: GameState, playerXPosition: PlayerXPosition ) : GameState = {
 
     val updatedCells = gameState.cells.map( cell => cell.cellPosition match {
@@ -86,7 +90,7 @@ object GameState {
 
   }
 
-  def playerOMoves( gameState: GameState, playerOPosition: PlayerOPosition ) : GameState = {
+  def playerOMoves(gameState: GameState, playerOPosition: PlayerOPosition ) : GameState = {
 
     val updatedCells = gameState.cells.map( cell => cell.cellPosition match {
       case playerOPosition.cellPosition => Cell(playerOPosition.cellPosition, O)
