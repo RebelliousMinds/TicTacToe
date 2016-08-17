@@ -3,6 +3,12 @@ package revised.model
 import scala.annotation.tailrec
 import scala.io.StdIn._
 
+sealed trait UserInput
+case object Blank extends UserInput
+case class PossiblePosition(positionSelection: PositionSelection) extends UserInput
+case object InvalidPosition extends UserInput
+case object Exit extends UserInput
+
 sealed trait HorizontalPosition
 case object Left extends HorizontalPosition
 case object HorizontalCenter extends HorizontalPosition
@@ -14,7 +20,6 @@ case object VerticalCenter extends VerticalPosition
 case object Bottom extends VerticalPosition
 
 case class PositionSelection(row: String, column: String)
-
 
 case class CellPosition(h: HorizontalPosition, v: VerticalPosition)
 
@@ -36,6 +41,8 @@ case object InProcess extends GameStatus
 case object PlayerXWon extends GameStatus
 case object PlayerOWon extends GameStatus
 case object Tie extends GameStatus
+case object SpotAlreadyTaken extends GameStatus
+case object EmptyStatus extends GameStatus
 
 case class Cell( cellPosition: CellPosition, cellState: CellState)
 
@@ -57,15 +64,11 @@ case class GameState(cells: List[Cell], player: Player, gameStatus: GameStatus) 
 
   def print(): Unit = {
 
-    val topCells = cells.filter( cell => cell.cellPosition.v == Top )
-    val middleCells = cells.filter( cell => cell.cellPosition.v == VerticalCenter )
-    val bottomCells = cells.filter( cell => cell.cellPosition.v == Bottom )
-
     println()
     println(" -------------")
-    printRow( topCells )
-    printRow( middleCells )
-    printRow( bottomCells )
+    printRow( cells.filter( cell => cell.cellPosition.v == Top ) )
+    printRow( cells.filter( cell => cell.cellPosition.v == VerticalCenter ) )
+    printRow( cells.filter( cell => cell.cellPosition.v == Bottom ) )
     println(" -------------")
     println()
 
@@ -74,31 +77,100 @@ case class GameState(cells: List[Cell], player: Player, gameStatus: GameStatus) 
 
 object GameState {
 
-  def computeGameStatus(gameState: GameState) : GameStatus = {
-    ???
+  def computeGameStatus(cells: List[Cell] ) : GameStatus = {
+
+    //TODO it would be nice to simplify here somehow
+
+    val topCells = cells.filter(cell => cell.cellPosition.v == Top).map(_.cellState).distinct
+    val middleCells = cells.filter(cell => cell.cellPosition.v == VerticalCenter).map(_.cellState).distinct
+    val bottomCells = cells.filter(cell => cell.cellPosition.v == Bottom).map(_.cellState).distinct
+
+    val leftCells = cells.filter(cell => cell.cellPosition.h == Left).map(_.cellState).distinct
+    val centerCells = cells.filter(cell => cell.cellPosition.h == HorizontalCenter).map(_.cellState).distinct
+    val rightCells = cells.filter(cell => cell.cellPosition.h == Right).map(_.cellState).distinct
+
+    val descDiagCells = List(
+      cells.find {cell => cell.cellPosition == CellPosition(Left, Top) },
+      cells.find {cell => cell.cellPosition == CellPosition(HorizontalCenter, VerticalCenter) },
+      cells.find {cell => cell.cellPosition == CellPosition(Right, Bottom) }
+    ).map(_.get).map(_.cellState).distinct
+
+    val ascDiagCells = List(
+      cells.find {cell => cell.cellPosition == CellPosition(Right, Top) },
+      cells.find {cell => cell.cellPosition == CellPosition(HorizontalCenter, VerticalCenter) },
+      cells.find {cell => cell.cellPosition == CellPosition(Left, Bottom) }
+    ).map(_.get).map(_.cellState).distinct
+
+    val cellStatuses = List(
+      topCells,
+      middleCells,
+      bottomCells,
+      leftCells,
+      centerCells,
+      rightCells,
+      descDiagCells,
+      ascDiagCells
+    )
+
+    cellStatuses.find { cellStatusList => cellStatusList.size == 1 &&
+      ( cellStatusList.head == X || cellStatusList.head == O ) } match {
+
+      //There was a row winner
+      case Some(status) => status.head match {
+        case X => PlayerXWon
+        case O => PlayerOWon
+        case Empty => EmptyStatus
+      }
+
+      //There was no row winner
+      case None => cells.find { cell => cell.cellState == Empty } match {
+        case Some(_) => InProcess
+        case None => Tie
+      }
+
+    }
+
   }
 
-  def playerXMoves( gameState: GameState, playerXPosition: PlayerXPosition ) : GameState = {
+  //TODO get rid of duplication here
 
-    val updatedCells = gameState.cells.map( cell => cell.cellPosition match {
-      case playerXPosition.cellPosition => Cell(playerXPosition.cellPosition, X)
-      case _ => cell
-    })
+  def playerXMoves(gameState: GameState, playerXPosition: PlayerXPosition ) : GameState = {
 
-    val gameStatus = computeGameStatus( gameState )
-    GameState(updatedCells, PlayerO, gameStatus)
+    gameState.cells.find { cell => cell.cellPosition == playerXPosition.cellPosition && cell.cellState == Empty } match {
+
+      case Some(_) =>
+        val updatedCells = gameState.cells.map {
+          case Cell(playerXPosition.cellPosition, Empty) => Cell(playerXPosition.cellPosition, X)
+          case cell@Cell(playerXPosition.cellPosition, _) => cell
+          case cell => cell
+        }
+
+        val gameStatus = computeGameStatus( updatedCells )
+        GameState(updatedCells, PlayerO, gameStatus)
+
+      case None => gameState.copy( gameStatus = SpotAlreadyTaken )
+
+    }
 
   }
 
   def playerOMoves(gameState: GameState, playerOPosition: PlayerOPosition ) : GameState = {
 
-    val updatedCells = gameState.cells.map( cell => cell.cellPosition match {
-      case playerOPosition.cellPosition => Cell(playerOPosition.cellPosition, O)
-      case _ => cell
-    })
+    gameState.cells.find { cell => cell.cellPosition == playerOPosition.cellPosition && cell.cellState == Empty } match {
 
-    val gameStatus = computeGameStatus( gameState )
-    GameState(updatedCells, PlayerX, gameStatus)
+      case Some(_) =>
+        val updatedCells = gameState.cells.map {
+          case Cell(playerOPosition.cellPosition, Empty) => Cell(playerOPosition.cellPosition, O)
+          case cell@Cell(playerOPosition.cellPosition, _) => cell
+          case cell => cell
+        }
+
+        val gameStatus = computeGameStatus( updatedCells )
+        GameState(updatedCells, PlayerX, gameStatus)
+
+      case None => gameState.copy( gameStatus = SpotAlreadyTaken )
+
+    }
 
   }
 
@@ -106,15 +178,17 @@ object GameState {
 
 case class Game() {
 
-  def getInput : Option[PositionSelection] = {
+  def getInput : UserInput = {
     val input = readLine("Where would you like to place your move? [row,column] ")
     input match {
-      case "" => None
+      case null => Exit
+      case "exit" => Exit
+      case "" => Blank
       case _ => if( input.contains(",") ) {
         val coordinates = input.split(",")
-        Some(PositionSelection(coordinates(0), coordinates(1)))
+        PossiblePosition(PositionSelection(coordinates(0), coordinates(1)))
       } else {
-        None
+        InvalidPosition
       }
     }
 
@@ -138,41 +212,46 @@ case class Game() {
   @tailrec
   final def loop( gameState: GameState ) : Unit = {
 
+    printGameState(gameState)
+
+    gameState.player match {
+      case PlayerX => println("It's player X's turn.")
+      case PlayerO => println("It's player O's turn.")
+    }
+
     val positionSelectionOption = getInput
 
     positionSelectionOption match {
-      case Some(positionSelection) => {
-        val cellPosition = toCellPosition(positionSelection)
-
-        cellPosition match {
+      case PossiblePosition(positionSelection) =>
+        toCellPosition(positionSelection) match {
           case Some(position) => gameState.player match {
-            case PlayerX => val newGameState = GameState.playerXMoves(gameState, PlayerXPosition(position))
-              newGameState.gameStatus match {
-                case InProcess => printGameState(newGameState); loop(newGameState)
-                case PlayerXWon => println("Player X Won!")
-                case PlayerOWon => println("Player O Won!")
-                case Tie => println("Tie, nobody wins!")
-              }
-            case PlayerO => val newGameState = GameState.playerOMoves(gameState, PlayerOPosition(position))
-              newGameState.gameStatus match {
-                case InProcess => printGameState(newGameState); loop(newGameState)
-                case PlayerXWon => println("Player X Won!")
-                case PlayerOWon => println("Player O Won!")
-                case Tie => println("Tie, nobody wins!")
-              }
+            case PlayerX => matchStatus(GameState.playerXMoves(gameState, PlayerXPosition(position)))
+            case PlayerO => matchStatus(GameState.playerOMoves(gameState, PlayerOPosition(position)))
           }
           case None => println("Invalid position entered\n"); loop(gameState)
         }
 
-      }
-      case None => println("The position you entered wasn't understood.\n"); loop(gameState)
+      case Blank => println("The position you entered wasn't understood.\n"); loop(gameState)
+      case InvalidPosition => println("Invalid position entered\n"); loop(gameState)
+      case Exit => println("Thank you for playing, goodbye!")
     }
-
 
   }
 
-  def play( gameState: GameState) = {
-    printGameState(gameState)
+  def matchStatus(gameState: GameState): Unit = {
+
+    gameState.gameStatus match {
+      case InProcess => loop(gameState)
+      case PlayerXWon => printGameState(gameState); println("Player X Won!")
+      case PlayerOWon =>  printGameState(gameState); println("Player O Won!")
+      case Tie => println("Tie, nobody wins!")
+      case SpotAlreadyTaken => println("Hey that spot's already taken!  Try again..."); loop(gameState)
+      case EmptyStatus => println("Empty won the match somehow...")
+    }
+
+  }
+
+  def play(gameState: GameState) = {
     loop(gameState)
   }
 
