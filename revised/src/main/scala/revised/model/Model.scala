@@ -244,7 +244,7 @@ case class Game() {
       case InProcess => loop(gameState)
       case PlayerXWon => printGameState(gameState); println("Player X Won!")
       case PlayerOWon =>  printGameState(gameState); println("Player O Won!")
-      case Tie => println("Tie, nobody wins!")
+      case Tie => printGameState(gameState); println("Tie, nobody wins!")
       case SpotAlreadyTaken => println("Hey that spot's already taken!  Try again..."); loop(gameState)
       case EmptyStatus => println("Empty won the match somehow...")
     }
