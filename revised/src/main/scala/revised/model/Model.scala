@@ -44,8 +44,13 @@ case object Tie extends GameStatus
 case object SpotAlreadyTaken extends GameStatus
 case object EmptyStatus extends GameStatus
 
+// The CellPosition might be wrong, which is an unfortunate drawback to this approach.
+// It'd be nice to remove the possibility for error in describing a position.
 case class Cell( cellPosition: CellPosition, cellState: CellState)
 
+// If you're going to represent this way, I'd suggest: List[List[Cell]], then you can
+// wrap that into a Matrix abstraction with safe methods for get / set based on row
+// and column information (CellPosition).
 case class GameState(cells: List[Cell], player: Player, gameStatus: GameStatus) {
 
   def printRow(cells: List[Cell]) : Unit = {
@@ -80,7 +85,9 @@ object GameState {
   def computeGameStatus(cells: List[Cell] ) : GameStatus = {
 
     //TODO it would be nice to simplify here somehow
-
+    // Holy shit, batman! You're not kidding. :-)
+    // At the very least, you can factor out def line(x) = cells.filter(_ == x).map(_.cellState).distinct
+    // and similar helpers for the other cases.
     val topCells = cells.filter(cell => cell.cellPosition.v == Top).map(_.cellState).distinct
     val middleCells = cells.filter(cell => cell.cellPosition.v == VerticalCenter).map(_.cellState).distinct
     val bottomCells = cells.filter(cell => cell.cellPosition.v == Bottom).map(_.cellState).distinct
@@ -101,6 +108,7 @@ object GameState {
       cells.find {cell => cell.cellPosition == CellPosition(Left, Bottom) }
     ).map(_.get).map(_.cellState).distinct
 
+    // I end up doing a similar thing in my reference solution.
     val cellStatuses = List(
       topCells,
       middleCells,
@@ -133,7 +141,7 @@ object GameState {
   }
 
   //TODO get rid of duplication here
-
+  // Yeah, you can extract a common function from these two functions.
   def playerXMoves(gameState: GameState, playerXPosition: PlayerXPosition ) : GameState = {
 
     gameState.cells.find { cell => cell.cellPosition == playerXPosition.cellPosition && cell.cellState == Empty } match {
